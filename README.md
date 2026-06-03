@@ -159,15 +159,17 @@ java -cp out Main
 
 ## Interface gráfica
 
-A janela é dividida em cinco regiões:
+Layout em cards inspirado em ferramentas modernas de monitoramento, com paleta
+clara, tipografia hierárquica e um único azul de destaque para a ação principal.
 
 | Região | Conteúdo |
 |--------|----------|
-| **Topo** | Barra de botões: `ALOCAR`, `LIBERAR`, `DESFAZER`, `CARREGAR DATASET`, `RESETAR`. Label de status com uso, livre, pendentes e tamanho do histórico. |
-| **Mapa de memória** | Faixa horizontal mostrando as folhas da árvore. Largura proporcional ao tamanho real do bloco. Verde = `LIVRE`, vermelho = `OCUPADO`. Clique em bloco ocupado libera; hover mostra tooltip. |
-| **Árvore rubro-negra** | Visualização hierárquica da árvore. Cor de fundo = estado do bloco (verde/vermelho/cinza). Borda VERMELHA = nó vermelho; borda PRETA = nó preto. |
-| **Painel direito** | Lista da fila de pendentes (FIFO) e listas de blocos livres no estilo `buddyinfo` (14 níveis). |
-| **Rodapé** | Histórico textual de operações com indicadores `[OK]`, `[FILA]`, `[FAIL]`, `[UNDO]`. |
+| **Cabeçalho** | Título, subtítulo e **4 cards de status** com valores em tempo real (`USADO`, `LIVRE`, `PENDENTES`, `HISTÓRICO`). |
+| **Barra de ações** | **ALOCAR** (botão primário azul), `Liberar`, `Desfazer`, `Carregar dataset`, `Resetar` (texto vermelho de ação destrutiva) e `Sair`. |
+| **Mapa de memória** | Card com a faixa horizontal mostrando apenas as folhas da árvore. Largura proporcional ao tamanho real do bloco, com gradiente leve. Verde = `LIVRE`, vermelho = `OCUPADO`. Clique em bloco ocupado libera; hover mostra tooltip. |
+| **Árvore rubro-negra** | Card com a visualização hierárquica. Cor de fundo = estado do bloco (verde/vermelho/cinza). Borda VERMELHA = nó vermelho; borda PRETA = nó preto. |
+| **Painel direito** | Cards de **Fila de pendentes** (FIFO) e **Listas livres** (estilo `buddyinfo`, 14 níveis com barras proporcionais). |
+| **Rodapé** | Card com o histórico textual de operações usando ícones: `✓` OK, `⚠` para fila, `✗` falha, `↶` undo, `●` info. |
 
 ---
 

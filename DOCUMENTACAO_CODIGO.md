@@ -513,139 +513,174 @@ Se tem dataset, chama `janela.carregarDataset(dataset)` logo depois de exibir a 
 
 ### 📄 `JanelaPrincipal.java`
 
-Janela principal. Estende `JFrame`. Toda a UI vive aqui (com dois inner painéis para mapa e árvore).
+Janela principal. Estende `JFrame`. Layout em **cards** inspirado em ferramentas modernas de monitoramento, com paleta clara (`#F5F7FA` fundo, `#FFFFFF` cards), tipografia hierárquica (Segoe UI) e **um único azul de destaque** (`#2563EB`) para a ação principal.
+
+#### Constantes de design
+
+A classe define paleta, fontes e ícones do log no topo do arquivo:
+
+- **Paleta:** `BG`, `PANEL`, `BORDER`, `TEXT_PRIMARY/SECONDARY/MUTED`, `ACCENT`, `DANGER`, `WARNING`, `BLOCK_LIVRE/OCUPADO/DIVIDIDO`, `RB_VERMELHO/PRETO`, etc.
+- **Tipografia:** `FONT_TITLE` (22pt), `FONT_VALUE` (20pt), `FONT_BUTTON` (13pt bold), `FONT_LABEL` (11pt bold), `FONT_BLOCK` (11pt bold), `FONT_MONO` (12pt monospaced para log/listas).
+- **Ícones do log:** `ICO_OK` (✓), `ICO_FILA` (⚠), `ICO_FAIL` (✗), `ICO_UNDO` (↶), `ICO_INFO` (●).
 
 #### Campos da janela
 
 ```java
-private AlocadorBuddy alocador;             // a instância única do alocador
-private PainelMapa painelMapa;              // o mapa horizontal de memória
-private PainelArvore painelArvore;          // a árvore RB desenhada
-private DefaultListModel<String> modeloFila;       // dados da JList da fila
-private DefaultListModel<String> modeloBuddyinfo;  // dados da JList do buddyinfo
-private JTextArea areaLog;                  // textarea do histórico
-private JLabel rotuloStatus;                // label de status no topo
+private AlocadorBuddy alocador;
+private PainelMapa painelMapa;
+private PainelArvore painelArvore;
+private DefaultListModel<String> modeloFila;
+private DefaultListModel<String> modeloBuddyinfo;
+private JTextArea areaLog;
+private JLabel valorUsado;
+private JLabel valorLivre;
+private JLabel valorPendentes;
+private JLabel valorHistorico;
 ```
+
+Os quatro `valor*` são referências aos labels dos cards de status no topo — atualizados em `atualizarTudo()`.
 
 #### Construtor
 
-Cria o alocador, monta a UI chamando `construirUI()`, chama `atualizarTudo()` para mostrar o estado inicial e centraliza a janela.
+Cria o alocador, define ícone customizado da janela (4 quadradinhos representando blocos buddy), monta a UI e centraliza. Janela inicia em **1440×900** com mínimo de **1180×760**.
+
+#### `criarIcone()`
+Desenha em `BufferedImage` o ícone da aplicação (4 retângulos brancos sobre fundo azul arredondado).
 
 #### `construirUI()`
 
-Monta o layout em camadas:
+Monta o layout em três regiões usando `BorderLayout`:
 
 | Região | Conteúdo |
 |---|---|
-| `BorderLayout.NORTH` | `topo`: barra escura com 5 botões + label de status branco |
-| `BorderLayout.CENTER` | `JSplitPane` horizontal: à esquerda os painéis de mapa/árvore (split vertical), à direita fila + buddyinfo |
-| `BorderLayout.SOUTH` | `JScrollPane` com o `JTextArea` do log |
+| `NORTH` | Cabeçalho (`construirCabecalho()`) com título, cards de status e barra de botões. |
+| `CENTER` | Corpo (`construirCorpo()`) com cards de mapa+árvore à esquerda e fila+buddyinfo à direita. |
+| `SOUTH` | Rodapé (`construirRodape()`) com o card do histórico de operações. |
 
-Cada `JScrollPane` envolve um componente para permitir rolagem se ele crescer.
+#### `construirCabecalho()`
 
-#### `botao(texto, fundo, hover)`
+Empilha verticalmente (`BoxLayout.Y_AXIS`):
+1. **Topo** (`BorderLayout`): à esquerda o título + subtítulo; à direita os 4 cards de status.
+2. **Separador** (linha cinza de 1px).
+3. **Barra de botões** (`FlowLayout`): `ALOCAR`, `Liberar`, `Desfazer`, `Carregar dataset`, `Resetar`, espaço, `Sair`.
 
-Fábrica de botões padronizados. Cada botão tem:
-- Cor de fundo original e cor de hover diferentes
-- Fonte negrito 13pt
-- Borda colorida (versão escura do fundo) que vira branca no hover
-- Cursor de mãozinha
-- `MouseListener` que troca cor e borda ao entrar/sair
+#### `construirStatsCards()`
+Cria um `GridLayout(1, 4)` com quatro `statCard()`s: USADO (azul), LIVRE (verde), PENDENTES (laranja), HISTÓRICO (cinza).
 
----
+#### `statCard(label, valor, corValor)`
+Fábrica de mini-card de métrica: label maiúscula pequena em cinza no topo, valor grande colorido embaixo. Retorna o `JPanel` que envolve o `JLabel` recebido — a referência ao label fica retida na janela para atualização futura.
 
-#### Métodos de ação
+#### `construirCorpo()`
+
+Layout em duas colunas:
+- **Centro** (`GridBagLayout`): card "MAPA DE MEMORIA" (peso 22%) e card "ARVORE RUBRO-NEGRA" (peso 78%), empilhados verticalmente.
+- **Leste** (`GridBagLayout`, largura 340): card "FILA DE PENDENTES" (35%) e card "LISTAS LIVRES (buddyinfo)" (65%).
+
+#### `construirRodape()`
+Card "HISTORICO DE OPERACOES" com `JTextArea` em fonte monospaced (altura ~190px).
+
+#### Fábricas auxiliares
 
 | Método | O que faz |
 |---|---|
-| `acaoAlocar()` (`JanelaPrincipal.java:118`) | Mostra um `JOptionPane` com 2 campos (id e KB), valida, chama `alocador.alocar()`, escreve no log e atualiza tudo. |
-| `acaoLiberar()` (`JanelaPrincipal.java:135`) | Pede o ID via `showInputDialog` e chama `liberarPorId()`. |
-| `liberarPorId(id)` (`JanelaPrincipal.java:144`) | Chama `alocador.liberar()`, loga o resultado e atualiza a UI. |
-| `acaoDesfazer()` (`JanelaPrincipal.java:150`) | Chama `alocador.desfazer()`, loga e atualiza. |
-| `acaoCarregar()` (`JanelaPrincipal.java:156`) | Abre `JFileChooser`, passa o arquivo escolhido para `carregarDataset()`. |
-| `carregarDataset(arquivo)` (`JanelaPrincipal.java:163`) | Lê o arquivo linha a linha. Ignora `#` (comentário) e linhas vazias. Cada `ALOCAR id kb` chama `alocador.alocar()`, cada `LIBERAR id` chama `alocador.liberar()`. Loga cada resultado. |
-| `acaoResetar()` (`JanelaPrincipal.java:194`) | Pede confirmação, recria o `AlocadorBuddy` do zero, limpa o log. |
+| `card(titulo, conteudo)` | Embrulha qualquer componente num **card branco** com borda fina cinza, padding 14×16 e header pequeno maiúscula em cima. Base visual de toda a UI. |
+| `scrollSemBorda(c)` | Cria `JScrollPane` sem bordas (para o componente caber dentro do card sem moldura dupla). |
+| `construirJList(modelo)` | Cria `JList` estilizada: fonte mono 12pt, altura de linha 22px, seleção em cinza claro. |
+| `botaoPrimario(texto)` | Botão azul cheio com hover mais escuro (uso: ALOCAR). |
+| `botaoSecundario(texto)` | Botão branco com borda cinza, hover em cinza claro (Liberar, Desfazer, Carregar, Sair). |
+| `botaoDestrutivo(texto)` | Botão branco com texto vermelho e borda rosa-clara, hover rosa muito claro (Resetar). |
 
----
+#### Ações dos botões
 
-#### `atualizarTudo()` — o método-chave da UI
+| Método | O que faz |
+|---|---|
+| `acaoAlocar()` | `JOptionPane` com 2 campos (id e KB), chama `alocador.alocar()`, loga `✓` ou `⚠` (fila). |
+| `acaoLiberar()` | `JOptionPane` pedindo o ID, chama `liberarPorId()`. |
+| `liberarPorId(id)` | Chama `alocador.liberar()`, loga `✓` ou `✗`. |
+| `acaoDesfazer()` | Chama `alocador.desfazer()`, loga `↶`. |
+| `acaoCarregar()` | Abre `JFileChooser`, passa para `carregarDataset()`. |
+| `carregarDataset(arquivo)` | Lê linha a linha (ignora `#` e linhas vazias), executa cada `ALOCAR id kb` / `LIBERAR id`, loga ícone correspondente. |
+| `acaoResetar()` | Pede confirmação, recria o `AlocadorBuddy`, limpa o log. |
+| `Sair` | `System.exit(0)` direto no lambda do botão. |
+
+#### `atualizarTudo()` — método-chave da UI
 
 Chamado **depois de cada operação** para sincronizar a tela com o estado do alocador.
 
 1. **Repinta os dois painéis gráficos** (mapa + árvore).
-2. **Refaz a fila visual:** itera `alocador.getPendentes().primeiro()` e seus `proximo` em sequência. Cada item vira uma linha no `modeloFila`.
-3. **Refaz o buddyinfo visual:** loop de 0 a 13 chamando `contagemNivel(i)`. Cada linha mostra `tamanho : qtd  =====` (barra proporcional).
-4. **Recalcula uso total:** percorre a árvore via `calcularUsado()` somando tamanho de todos os nós OCUPADO.
-5. **Atualiza o label de status** com Usado/Livre/Pendentes/Histórico.
+2. **Refaz a fila visual:** itera `alocador.getPendentes().primeiro()` e seus `proximo`. Se vazia, mostra "(fila vazia)".
+3. **Refaz o buddyinfo visual:** loop de 0 a 13 chamando `contagemNivel(i)`. Cada linha mostra `tamanho : qtd  ■■■` (barras com caractere Unicode).
+4. **Recalcula uso total:** `calcularUsado()` soma o tamanho de todos os nós OCUPADO.
+5. **Atualiza os 4 cards de status:** `valorUsado`, `valorLivre`, `valorPendentes`, `valorHistorico`.
 
-#### `calcularUsado(no)`
+#### Utilitários
 
-Recursão simples: se o nó é OCUPADO retorna seu tamanho; se DIVIDIDO retorna a soma dos filhos. Folhas LIVRES contam zero.
-
-#### `formatarKB(kb)`
-
-Converte KB em texto legível: `512 KB`, `8 MB`, `1.5 MB`. Apenas formatação.
+- `repetir(c, n)`: gera string com `n` cópias do caractere `c` (sem usar `String.repeat()` por segurança).
+- `calcularUsado(no)`: recursão sobre a árvore somando blocos OCUPADO.
+- `formatarKB(kb)`: converte KB em string legível (`512 KB`, `8 MB`, `1.5 MB`).
+- `clarear(c, ratio)`: mistura uma cor com branco para gerar tons mais claros usados nos gradientes dos blocos.
 
 ---
 
 ### Inner class `PainelMapa`
 
-Subclasse de `JPanel` que **desenha o mapa horizontal de memória**.
+Subclasse de `JPanel` que **desenha o mapa horizontal de memória** dentro do card.
 
 #### Campos
 ```java
-private int areaX, areaY, areaW, areaH;  // área útil do painel (sem margem)
+private int areaX, areaY, areaW, areaH;  // região útil
 ```
-
-Guardados para que o `MouseListener` possa usar as mesmas coordenadas da pintura ao detectar cliques.
+Guardados para que o `MouseListener` use as mesmas coordenadas da pintura ao detectar cliques.
 
 #### Construtor
+- `setBackground(PANEL)` e `setOpaque(true)`.
 - Registra como receptor de tooltips.
-- Adiciona um `MouseAdapter` que detecta clique e abre confirmação para liberar.
+- `MouseAdapter` que detecta clique e abre confirmação para liberar.
 
 #### `getToolTipText(e)`
-Quando o mouse passa em cima, chama `blocoEm(x, y)` para descobrir qual nó está naquela coordenada e gera uma string com estado/tamanho/id/cor.
+Chama `blocoEm(x, y)` e retorna string com estado, tamanho, id e cor RB.
 
-#### `blocoEm(x, y)` → `achar(no, x0, y0, w0, h0, mx, my)`
-Recursão geométrica: desce pela árvore dividindo a área visual ao meio em cada nó DIVIDIDO, espelhando exatamente como o desenho foi feito.
+#### `blocoEm(x, y)` → `achar(no, ...)`
+Recursão geométrica espelhando o desenho: desce pela árvore dividindo a área visual ao meio em cada nó DIVIDIDO.
 
 #### `paintComponent(g)`
-Onde a mágica acontece. Limpa a área, calcula a região útil descontando margem, chama `desenharFolhas()` para pintar tudo, depois desenha uma borda externa.
+Limpa a área e chama `desenharFolhas()` na raiz. A área ocupa o painel inteiro (sem margem) porque o card já fornece o padding.
 
 #### `desenharFolhas(g, no, x, y, w, h)`
 Recursão que **só pinta as folhas** (LIVRE e OCUPADO):
-- Se o nó é **DIVIDIDO**: divide a largura ao meio e chama recursivamente para os dois filhos. Não pinta nada nesse nível.
-- Se o nó é **LIVRE**: pinta de verde com borda branca.
-- Se o nó é **OCUPADO**: pinta de vermelho.
-- Depois escreve o texto centralizado (`identificador  tamanho` ou só `tamanho`), se couber.
-
-**Resultado visual:** o mapa mostra a "geografia" real dos blocos, com larguras proporcionais aos tamanhos.
+- Se o nó é **DIVIDIDO**: divide a largura ao meio e recursivamente desce.
+- Se é folha: pinta com **`GradientPaint`** (tom mais claro em cima, tom base embaixo) e desenha um separador branco translúcido no lado direito.
+- Escreve o texto centralizado em branco se couber: `identificador  tamanho` para OCUPADO ou só `tamanho` para LIVRE.
 
 #### Métodos da interface `Scrollable`
-Garantem que o painel ocupe sempre a largura do viewport do JScrollPane (não cria barra horizontal desnecessária).
+`tracksViewportWidth=true` e `tracksViewportHeight=true` — o painel sempre ocupa o viewport (não cria scroll).
 
 ---
 
 ### Inner class `PainelArvore`
 
-Mesma estrutura do `PainelMapa`, mas desenha **a árvore inteira**, incluindo os nós DIVIDIDO (em cinza).
+Mesma ideia do `PainelMapa`, mas desenha **a árvore inteira**, incluindo os nós DIVIDIDO em cinza.
 
 #### `recalcular()`
-Calcula a profundidade máxima da árvore e ajusta a altura preferida do painel (`profundidade + 1) * 56`). Quando você aloca muito, a árvore fica mais alta e o `JScrollPane` ganha barra vertical.
+Calcula a profundidade máxima e ajusta a altura preferida (`(profundidade + 1) * 56`). Quando a árvore cresce, o `JScrollPane` ganha barra vertical.
 
 #### `paintComponent(g)`
-Calcula a área útil e chama `desenharNo()` na raiz.
+Calcula a largura útil e chama `desenharNo()` na raiz.
 
 #### `desenharNo(g, no, x, y, w, alturaNivel)`
-Recursão que **pinta cada nó** com:
-- **Cor de fundo**: vermelho/verde/cinza conforme estado.
-- **Borda**: vermelha grossa se o nó RB é VERMELHO, preta fina se é PRETO. Isso é o que torna a árvore rubro-negra **visível**.
-- **Texto centralizado**: tamanho + estado + (id se ocupado).
-- **Linhas para os filhos**: desenha duas linhas saindo da base do nó até o centro de onde cada filho será desenhado.
-- **Chamada recursiva** para esquerdo (na metade esquerda da largura) e direito (metade direita).
+Recursão que **pinta cada nó**:
+- **Fundo com gradiente** (`GradientPaint`): vermelho/verde/cinza conforme estado, com tom mais claro em cima.
+- **Cantos arredondados** (`fillRoundRect`).
+- **Borda colorida** (`drawRoundRect`): vermelha grossa (2.4px) se o nó RB é VERMELHO, preta fina (1.4px) se é PRETO. Isso é o que torna a árvore rubro-negra **visível**.
+- **Texto centralizado**: tamanho + estado + (id se OCUPADO). Branco para nós OCUPADO/LIVRE; cinza-escuro para nós DIVIDIDO (contraste com fundo cinza).
+- **Linhas finas** ligando o nó atual aos filhos.
+- **Recursão** para esquerdo (metade esquerda) e direito (metade direita).
 
 #### `acharNo()`
-Versão geométrica do "que nó está em (x, y)?", usada por tooltip e clique.
+Versão geométrica de "qual nó está em (x, y)?", usada por tooltip e clique.
+
+#### Métodos da interface `Scrollable`
+`tracksViewportWidth=true` e `tracksViewportHeight=false` — largura sempre encaixa, altura pode crescer (ativando scroll vertical).
 
 ---
 
@@ -670,12 +705,12 @@ Vamos seguir o que acontece quando você clica em **ALOCAR** com `id="teste"` e 
    - 8 MB == 8 MB → retorna o filho esquerdo.
 6. De volta em `alocar()`: marca o bloco como OCUPADO, grava `identificador="teste"`, remove da lista de 8 MB, empilha operação no histórico.
 7. Retorna `true` para a UI.
-8. `acaoAlocar()` loga `[OK] ALOCAR teste 5120 KB`.
+8. `acaoAlocar()` loga `✓  ALOCAR   teste   5120 KB`.
 9. Chama `atualizarTudo()`:
    - `painelMapa.repaint()` → o mapa redesenha mostrando o bloco vermelho de 8 MB.
    - `painelArvore.repaint()` → a árvore mostra os novos nós DIVIDIDO + OCUPADO + LIVRE.
    - `modeloBuddyinfo` se atualiza para refletir as novas contagens das listas.
-   - Label de status mostra "Usado: 8 MB / Livre: 24 MB".
+   - Os 4 cards de status atualizam: USADO `8 MB`, LIVRE `24 MB`, PENDENTES `0`, HISTORICO `1`.
 
 ---
 
