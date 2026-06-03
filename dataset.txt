@@ -1,0 +1,77 @@
+# Dataset de teste para o Alocador Buddy Binário
+# Memória total: 32 MB (32768 KB)
+# Buddy mínimo: 4 KB
+# Tamanhos dos arquivos: entre 8 KB e 16 MB
+# Formato: ALOCAR <id> <tamanho_em_KB> | LIBERAR <id>
+#
+# Exercita: splits múltiplos, merges em cascata, fila de pendentes,
+# fragmentação interna, buddy mínimo, operações intercaladas
+# -------------------------------------------------------
+
+# Fase 1: Alocações iniciais preenchendo a memória
+ALOCAR img01 8
+ALOCAR log01 16
+ALOCAR dados01 5120
+ALOCAR video01 16384
+ALOCAR config01 32
+ALOCAR cache01 4096
+ALOCAR temp01 512
+ALOCAR img02 8
+
+
+# Fase 2: Liberações parciais — gera fragmentos
+LIBERAR log01
+LIBERAR config01
+LIBERAR temp01
+
+# Fase 3: Novas alocações que aproveitam os espaços liberados
+ALOCAR relatorio01 64
+ALOCAR thumbnail01 24
+ALOCAR sessao01 256
+
+# Fase 4: Alocação grande que deve falhar e ir para a fila
+ALOCAR backup01 12288
+
+# Fase 5: Liberações para gerar merge e tentar atender a fila
+LIBERAR video01
+LIBERAR cache01
+
+# Fase 6: Alocações médias intercaladas
+ALOCAR audio01 3072
+ALOCAR planilha01 1024
+ALOCAR fonte01 128
+
+# Fase 7: Liberações para provocar merge em cascata
+LIBERAR dados01
+LIBERAR audio01
+LIBERAR planilha01
+
+# Fase 8: Alocações que testam blocos pequenos (próximos do buddy mínimo)
+ALOCAR icone01 8
+ALOCAR icone02 12
+ALOCAR icone03 16
+ALOCAR pixel01 8
+
+# Fase 9: Liberações — devem causar merges progressivos
+LIBERAR relatorio01
+LIBERAR thumbnail01
+LIBERAR sessao01
+LIBERAR fonte01
+
+# Fase 10: Alocação grande testando memória quase cheia
+ALOCAR modelo3d 8192
+
+# Fase 11: Liberações em sequência para testar merge total
+LIBERAR img01
+LIBERAR icone01
+LIBERAR icone02
+LIBERAR icone03
+LIBERAR pixel01
+LIBERAR modelo3d
+
+# Fase 12: Se a fila de pendentes ainda tem backup01, tentar atender agora
+
+# Fase 13: Limpeza final
+LIBERAR backup01
+
+# Estado final esperado: 32 MB livres, árvore com raiz [32M LIVRE]
