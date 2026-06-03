@@ -9,6 +9,10 @@ A árvore que organiza os blocos é uma **Árvore Rubro-Negra** com sentinela NI
 rotações esquerda/direita e procedimentos de correção após inserção (`fixInsert`)
 e remoção (`fixDelete`).
 
+A aplicação possui **interface gráfica Swing** que desenha o mapa da memória, a
+árvore rubro-negra, a fila de pendentes, as listas de blocos livres e o log de
+operações em tempo real.
+
 ---
 
 ## Autor
@@ -32,9 +36,11 @@ src/
   EstadoBloco.java
   No.java
   AlocadorBuddy.java
+  JanelaPrincipal.java
   Main.java
 dataset.txt
 README.md
+DOCUMENTACAO_CODIGO.md
 ```
 
 ---
@@ -51,7 +57,8 @@ README.md
 | `EstadoBloco` | Enum `{ LIVRE, OCUPADO, DIVIDIDO }`. |
 | `No` | Nó da árvore: tamanho, estado, identificador, pai, filhos, cor. Inclui sentinela `NIL` (PRETO). |
 | `AlocadorBuddy` | Lógica do alocador: split/merge recursivos, rotações, correções RB, atendimento da fila, registro no histórico. |
-| `Main` | Menu interativo de 8 opções, visualização hierárquica, leitura do dataset. |
+| `JanelaPrincipal` | Interface gráfica Swing. Desenha o mapa, a árvore rubro-negra, fila, buddyinfo e log. |
+| `Main` | Ponto de entrada. Inicializa o Look and Feel, abre a janela e carrega o dataset opcional. |
 
 ---
 
@@ -121,7 +128,8 @@ README.md
 
 ## Como compilar e executar
 
-Pré-requisito: JDK 8 ou superior (`javac` no PATH).
+**Pré-requisito:** JDK 11 ou superior. Recomendado utilizar a JDK instalada
+pelo IntelliJ IDEA (em `~/.jdks/openjdk-23.0.2`) ou qualquer JDK moderna.
 
 ### Compilação
 ```powershell
@@ -129,30 +137,37 @@ javac -d out src/*.java
 ```
 
 ### Execução
-Com dataset por argumento:
+Com dataset por argumento (a janela já abre com o dataset processado):
 ```powershell
 java -cp out Main dataset.txt
 ```
 
-Sem dataset (inicia diretamente no menu):
+Sem dataset (a janela abre vazia e o dataset pode ser carregado pelo botão):
 ```powershell
 java -cp out Main
 ```
 
+### Rodando no IntelliJ
+1. **File → Open** e selecione a pasta do projeto.
+2. Confirme que `src/` está marcado como **Sources**.
+3. Em **Project Structure**, defina a JDK 11 ou superior.
+4. Abra `src/Main.java` e clique em **Run 'Main.main()'**.
+5. Para já carregar o dataset, em **Run → Edit Configurations**,
+   no campo **Program arguments** coloque `dataset.txt`.
+
 ---
 
-## Menu interativo
+## Interface gráfica
 
-```
-(1) Alocar
-(2) Liberar
-(3) Desfazer (Undo)
-(4) Exibir memoria
-(5) Exibir fila de pendentes
-(6) Exibir listas de blocos livres
-(7) Carregar dataset
-(8) Sair
-```
+A janela é dividida em cinco regiões:
+
+| Região | Conteúdo |
+|--------|----------|
+| **Topo** | Barra de botões: `ALOCAR`, `LIBERAR`, `DESFAZER`, `CARREGAR DATASET`, `RESETAR`. Label de status com uso, livre, pendentes e tamanho do histórico. |
+| **Mapa de memória** | Faixa horizontal mostrando as folhas da árvore. Largura proporcional ao tamanho real do bloco. Verde = `LIVRE`, vermelho = `OCUPADO`. Clique em bloco ocupado libera; hover mostra tooltip. |
+| **Árvore rubro-negra** | Visualização hierárquica da árvore. Cor de fundo = estado do bloco (verde/vermelho/cinza). Borda VERMELHA = nó vermelho; borda PRETA = nó preto. |
+| **Painel direito** | Lista da fila de pendentes (FIFO) e listas de blocos livres no estilo `buddyinfo` (14 níveis). |
+| **Rodapé** | Histórico textual de operações com indicadores `[OK]`, `[FILA]`, `[FAIL]`, `[UNDO]`. |
 
 ---
 
@@ -173,25 +188,10 @@ ALOCAR a2 3072
 LIBERAR a1
 ```
 
----
-
-## Exemplo de execução (recorte)
-
-Após alocar `a1=200KB` e `a2=100KB` em 1024 KB de memória (versão simplificada):
-
-```
-[1024K DIVIDIDO]
-  ├── [512K DIVIDIDO]
-  │     ├── [256K OCUPADO a1]
-  │     └── [256K DIVIDIDO]
-  │           ├── [128K OCUPADO a2]
-  │           └── [128K LIVRE]
-  └── [512K LIVRE]
-
-Fila de pendentes (0): [vazia]
-Blocos livres:
-  4KB: 0 | ... | 128KB: 1 | 256KB: 0 | 512KB: 1 | ...
-```
+O dataset incluído no projeto (`dataset.txt`) cobre 13 fases: alocações
+iniciais, liberações parciais para gerar fragmentação, alocações que aproveitam
+espaços liberados, requisição grande que vai para a fila, liberações para gerar
+merge em cascata e limpeza final.
 
 ---
 
@@ -216,6 +216,15 @@ quando a requisição já é uma potência de 2 (0% de desperdício).
 
 ---
 
+## Documentação adicional
+
+O arquivo [`DOCUMENTACAO_CODIGO.md`](./DOCUMENTACAO_CODIGO.md) traz uma
+descrição detalhada arquivo por arquivo, com explicação de cada classe, cada
+método e o ciclo de vida completo de uma operação (da UI até o desenho do
+pixel).
+
+---
+
 ## Restrições atendidas
 
 - Nenhum uso de `ArrayList`, `LinkedList`, `Queue`, `Stack`, `HashMap`.
@@ -229,6 +238,6 @@ quando a requisição já é uma potência de 2 (0% de desperdício).
 - Merge recursivo propagando até a raiz quando possível.
 - Fila reatendida após cada merge.
 - Pilha registra alocações e liberações bem-sucedidas; undo reverte ambos.
-- Menu com as 8 opções obrigatórias.
-- Carregamento de dataset via argumento ou opção do menu.
-- Visualização hierárquica + fila + `buddyinfo`.
+- Carregamento de dataset via argumento de linha de comando ou botão da
+  interface gráfica.
+- Visualização gráfica completa (mapa, árvore RB, fila, buddyinfo, log).
